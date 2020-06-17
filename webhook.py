@@ -1,12 +1,8 @@
 import jsonpatch
 from flask import Flask, request, jsonify
 import copy
-import logging
 import base64
 import os
-import sys
-
-
 
 JAEGER_ENV = {
     'JAEGER_AGENT_PORT': os.environ['JAEGER_AGENT_PORT'],
@@ -17,9 +13,6 @@ JAEGER_ENV = {
 
 JAVA_AGENT = ' -javaagent:/mnt/auto-trace/opentracing-specialagent-1.5.0.jar -Dsa.tracer=jaeger -Dsa.log.level=FINE'
 
-PROBE_DELAY = 300
-PROBE_PERIOD = 30
-
 app = Flask(__name__)
 
 @app.route('/decorate', methods=['POST'])
@@ -29,15 +22,12 @@ def decorate():
     source = req['object']
     target = copy.deepcopy(source)
 
-    logging.info(target)
-    
-    if target['metadata']['labels'].get('autotrace', 'disabled') == 'enabled':
-        add_volume(target)
-        add_init_container(target)
-        tweak_containers(target)
+    add_volume(target)
+    add_init_container(target)
+    tweak_containers(target)
 
     patch = jsonpatch.JsonPatch.from_diff(source, target)
-    logging.info(patch)
+    print(patch)
 
     return jsonify({
         'response': {
@@ -55,15 +45,6 @@ def tweak_containers(target):
     for container in containers:
         add_mount(container)
         edit_env(container)
-        extend_probe(container.get('livenessProbe', {}))
-        extend_probe(container.get('readinessProbe', {}))
-
-        
-def extend_probe(probe):
-    if probe.get('initialDelaySeconds', 0) < PROBE_DELAY:
-        probe['initialDelaySeconds'] = PROBE_DELAY
-    if probe.get('periodSeconds', 0) < PROBE_PERIOD:
-        probe['periodSeconds'] = PROBE_PERIOD
 
 
 def edit_env(container):
@@ -127,4 +108,4 @@ def add_volume(target):
 
 
 if __name__ == "__main__":
-    app.run('0.0.0.0', debug=True, ssl_context=('webhook-server-tls.crt', 'webhook-server-tls.key'))
+    app.run('0.0.0.0', debug=False, ssl_context=('webhook-server-tls.crt', 'webhook-server-tls.key'))
