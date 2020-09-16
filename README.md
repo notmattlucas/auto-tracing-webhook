@@ -35,3 +35,25 @@ spec:
 ```
 
 Now when you deploy your java app it should automatically instrument and begin tracing.
+
+## Generate Keys
+
+```
+mkdir keys
+./generate-keys.sh keys
+```
+
+## Check Certificate Expiry
+
+```
+openssl x509 -subject -enddate -noout -in keys/ca.crt
+openssl x509 -subject -enddate -noout -in keys/webhook-server-tls.crt
+```
+
+## Generate caBundle for webhook.yml
+
+```
+cat keys/ca.crt | base64 | tr -d "\n"
+```
+
+Add to webhook.yml
